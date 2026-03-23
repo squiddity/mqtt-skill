@@ -55,4 +55,49 @@ describe('CLI integration', () => {
       expect(err.stderr).toContain('unknown command');
     }
   });
+
+  it('watch command validates topic argument', () => {
+    try {
+      execSync(`npx tsx ${cliPath} watch`, { encoding: 'utf-8' });
+    } catch (err: any) {
+      expect(err.status).toBe(1);
+      expect(err.stderr).toContain('missing required args');
+    }
+  });
+
+  it('watch command accepts --hook option', () => {
+    vi.stubEnv('MQTT_HOST', 'mqtt://localhost');
+    try {
+      execSync(`npx tsx ${cliPath} watch test/# --hook http://example.com --timeout 1`, { encoding: 'utf-8', timeout: 5000 });
+    } catch (err: any) {
+      expect(err.stderr).toContain('ECONNREFUSED');
+    }
+  });
+
+  it('watch command accepts --filter option with valid JSON', () => {
+    vi.stubEnv('MQTT_HOST', 'mqtt://localhost');
+    try {
+      execSync(`npx tsx ${cliPath} watch test/# --filter \'{"key":"value"}\' --timeout 1`, { encoding: 'utf-8', timeout: 5000 });
+    } catch (err: any) {
+      expect(err.stderr).toContain('ECONNREFUSED');
+    }
+  });
+
+  it('watch command rejects invalid --filter JSON', () => {
+    try {
+      execSync(`npx tsx ${cliPath} watch test/# --filter 'not-json'`, { encoding: 'utf-8' });
+    } catch (err: any) {
+      expect(err.status).toBe(1);
+      expect(err.stderr).toContain('Invalid filter JSON');
+    }
+  });
+
+  it('list command works', () => {
+    vi.stubEnv('MQTT_HOST', 'mqtt://localhost');
+    try {
+      execSync(`npx tsx ${cliPath} list`, { encoding: 'utf-8', timeout: 10000 });
+    } catch (err: any) {
+      expect(err.stderr).toContain('ECONNREFUSED');
+    }
+  });
 });

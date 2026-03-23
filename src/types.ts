@@ -11,3 +11,11 @@ export interface Message {
   payload: unknown;
   timestamp: number;
 }
+
+export interface WatchOptions {
+  hook?: string;
+  token?: string;
+  onMatch?: string;
+  filter?: Record<string, unknown>;
+  timeout?: number;
+}

@@ -1,5 +1,6 @@
 import mqtt from 'mqtt';
-import type { MqttConfig, Message } from './types.js';
+import { exec } from 'child_process';
+import type { MqttConfig, Message, WatchOptions } from './types.js';
 
 export function loadConfig(): MqttConfig {
   const host = process.env.MQTT_HOST;
@@ -75,5 +76,74 @@ export async function subscribeAndWait(
         reject(err);
       }
     });
+  });
+}
+
+export function watchTopics(
+  client: mqtt.MqttClient,
+  topic: string,
+  options: WatchOptions
+): void {
+  const { hook, token, onMatch, filter, timeout } = options;
+  const hookUrl = hook || 'http://127.0.0.1:18789/hooks/wake';
+
+  const timer = timeout ? setTimeout(() => {
+    client.unsubscribe(topic);
+    client.end();
+    process.exit(0);
+  }, timeout * 1000) : null;
+
+  client.on('message', async (t, payload) => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(payload.toString());
+    } catch {
+      parsed = payload.toString();
+    }
+
+    if (filter && typeof parsed === 'object' && parsed !== null) {
+      const filterMatch = Object.entries(filter).every(([k, v]) => (parsed as Record<string, unknown>)[k] === v);
+      if (!filterMatch) return;
+    }
+
+    const payloadStr = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
+    const text = `MQTT message on ${t}: ${payloadStr}`;
+
+    if (onMatch) {
+      const cmd = onMatch.replace('{{message}}', payloadStr).replace('{{topic}}', t);
+      exec(cmd, (err, stdout, stderr) => {
+        if (err) console.error('Command error:', err);
+        else if (stdout) console.log(stdout);
+      });
+    }
+
+    if (hook) {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      try {
+        const res = await fetch(hookUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            text,
+            sessionKey: `mqtt:${t}`,
+            wakeMode: 'now',
+          }),
+        });
+        if (!res.ok) console.error('Webhook error:', res.status);
+      } catch (e) {
+        console.error('Failed to send webhook:', e);
+      }
+    }
+  });
+
+  client.subscribe(topic, { qos: 1 }, (err) => {
+    if (err) {
+      console.error('Subscribe error:', err);
+      client.end();
+      process.exit(1);
+    }
+    console.log(`Watching ${topic}...`);
   });
 }

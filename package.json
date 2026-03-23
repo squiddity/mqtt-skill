@@ -1,0 +1,33 @@
+{
+  "name": "mqtt-agent-skill",
+  "version": "1.0.0",
+  "description": "MQTT agent skill for LLM agents",
+  "type": "module",
+  "bin": {
+    "mqtt-skill": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "broker": "tsx src/mqtt-broker.ts",
+    "build": "tsc",
+    "test": "echo \"Tests not implemented\" && exit 0"
+  },
+  "keywords": [
+    "mqtt",
+    "agent",
+    "skill"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aedes": "^1.0.1",
+    "goke": "^6.3.0",
+    "mqtt": "^4.3.8",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
